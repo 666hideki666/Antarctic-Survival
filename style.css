@@ -1,0 +1,129 @@
+@import url('https://fonts.googleapis.com/css2?family=Kosugi+Maru&display=swap');
+
+body {
+    margin: 0;
+    overflow: hidden;
+    font-family: 'Kosugi Maru', sans-serif; /* フォントを適用 */
+}
+
+#game-container {
+    width: 100vw;
+    height: 100vh;
+    background-image: url('images/backgrounds/antarctic_land.png');
+    background-size: cover;
+    position: relative;
+}
+
+#player {
+    width: 50px;
+    height: 50px;
+    background-image: url('images/characters/penguin.png');
+    background-size: contain;
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.obstacle {
+    width: 50px;
+    height: 50px;
+    position: absolute;
+    top: -50px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+.side-obstacle {
+    width: 80px; /* 大きめに設定 */
+    height: 80px; /* 大きめに設定 */
+    position: absolute;
+    top: -80px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+.point-item {
+    width: 40px; /* アイテムのサイズ */
+    height: 40px; /* アイテムのサイズ */
+    position: absolute;
+    top: -40px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+#score {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    color: black;
+    font-size: 24px;
+}
+
+#game-over-screen {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    background-color: rgba(0, 0, 0, 0.7); /* 半透明の黒背景 */
+    padding: 30px;
+    border-radius: 10px;
+    border: 2px solid #8B0000; /* マットな赤色の枠線 */
+    color: #8B0000; /* マットな赤色の文字色 */
+}
+
+#game-over-screen h1 {
+    font-size: 72px;
+    margin: 0;
+}
+
+#game-over-screen p {
+    font-size: 36px;
+}
+
+#ranking-container {
+    margin-top: 20px;
+    color: white; /* ランキングの文字色は白に */
+}
+
+#ranking-container h2 {
+    font-size: 28px;
+    margin-bottom: 10px;
+}
+
+#score-list {
+    list-style: none;
+    padding: 0;
+    font-size: 24px;
+}
+
+#score-list li {
+    margin-bottom: 5px;
+}
+
+.hidden {
+    display: none;
+}
+
+#start-screen {
+    position: absolute;
+    bottom: 50px; /* 画面下部に移動 */
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+}
+
+#start-button {
+    font-size: 48px;
+    padding: 20px 40px;
+    cursor: pointer;
+    background-color: #8B0000; /* マットな赤色のボタン */
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Kosugi Maru', sans-serif; /* フォントを適用 */
+}
