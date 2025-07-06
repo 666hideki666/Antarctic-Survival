@@ -46,16 +46,31 @@ startButton.addEventListener('click', () => {
     gameLoop();
 });
 
+function handleMove(e) {
+    const gameRect = gameContainer.getBoundingClientRect();
+    const playerRect = player.getBoundingClientRect();
+    let clientX = e.clientX;
+    if (e.touches) {
+        clientX = e.touches[0].clientX;
+    }
+    let newLeft = clientX - gameRect.left - playerRect.width / 2;
+    const leftBoundary = 20;
+    newLeft = Math.max(leftBoundary, Math.min(newLeft, gameRect.width - playerRect.width));
+    player.style.left = `${newLeft}px`;
+}
+
 document.addEventListener('mousemove', (e) => {
     if (!gameOver) {
-        const gameRect = gameContainer.getBoundingClientRect();
-        const playerRect = player.getBoundingClientRect();
-        let newLeft = e.clientX - gameRect.left - playerRect.width / 2;
-        const leftBoundary = 20;
-        newLeft = Math.max(leftBoundary, Math.min(newLeft, gameRect.width - playerRect.width));
-        player.style.left = `${newLeft}px`;
+        handleMove(e);
     }
 });
+
+document.addEventListener('touchmove', (e) => {
+    if (!gameOver) {
+        e.preventDefault(); // スクロールを防ぐ
+        handleMove(e);
+    }
+}, { passive: false });
 
 function checkDifficultyIncrease() {
     while (score >= lastSpeedUpScore + 300) {
