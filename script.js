@@ -6,19 +6,19 @@ const finalScore = document.getElementById('final-score');
 const startScreen = document.getElementById('start-screen');
 const startButton = document.getElementById('start-button');
 const gameMusic = document.getElementById('game-music');
-const sparkleSound = document.getElementById('sparkle-sound'); // 追加
+const sparkleSound = document.getElementById('sparkle-sound');
 const scoreList = document.getElementById('score-list');
 
 let score = 0;
 let gameOver = true;
-let obstacleGenerationInterval;
-let sideObstacleGenerationInterval;
-let pointItemGenerationInterval;
 let currentObstacleSpeed = 5;
 let obstaclesPerGeneration = 1;
 let sideObstacleIntervalTime = 3000;
 const collisionPadding = 15;
 let lastSpeedUpScore = 0;
+let lastObstacleTime = 0;
+let lastSideObstacleTime = 0;
+let lastPointItemTime = 0;
 
 player.style.display = 'none';
 scoreDisplay.style.display = 'none';
@@ -31,37 +31,19 @@ startButton.addEventListener('click', () => {
     score = 0;
     scoreDisplay.textContent = `Score: ${score}`;
     gameOverScreen.classList.add('hidden');
-    
-    document.querySelectorAll('.obstacle').forEach(obstacle => obstacle.remove());
-    document.querySelectorAll('.side-obstacle').forEach(obstacle => obstacle.remove());
-    document.querySelectorAll('.point-item').forEach(item => item.remove());
+
+    document.querySelectorAll('.obstacle, .side-obstacle, .point-item').forEach(el => el.remove());
 
     currentObstacleSpeed = 5;
     obstaclesPerGeneration = 1;
     sideObstacleIntervalTime = 3000;
     lastSpeedUpScore = 0;
+    lastObstacleTime = 0;
+    lastSideObstacleTime = 0;
+    lastPointItemTime = 0;
 
-    if (obstacleGenerationInterval) {
-        clearInterval(obstacleGenerationInterval);
-    }
-    obstacleGenerationInterval = setInterval(createObstacle, 1000);
-
-    if (sideObstacleGenerationInterval) {
-        clearInterval(sideObstacleGenerationInterval);
-    }
-    sideObstacleGenerationInterval = setInterval(createSideObstacle, sideObstacleIntervalTime);
-
-    if (pointItemGenerationInterval) {
-        clearInterval(pointItemGenerationInterval);
-    }
-    pointItemGenerationInterval = setInterval(createPointItem, 5000);
-
-    gameMusic.play().then(() => {
-        console.log("音楽が再生されました。");
-    }).catch(error => {
-        console.error("音楽の再生に失敗しました: ", error);
-        console.log("ブラウザの自動再生ポリシーにより、音楽の再生がブロックされた可能性があります。ユーザーの操作後に再生を試みてください。");
-    });
+    gameMusic.play().catch(e => console.error("Music play failed:", e));
+    gameLoop();
 });
 
 document.addEventListener('mousemove', (e) => {
@@ -69,16 +51,8 @@ document.addEventListener('mousemove', (e) => {
         const gameRect = gameContainer.getBoundingClientRect();
         const playerRect = player.getBoundingClientRect();
         let newLeft = e.clientX - gameRect.left - playerRect.width / 2;
-
         const leftBoundary = 20;
-        if (newLeft < leftBoundary) {
-            newLeft = leftBoundary;
-        }
-
-        if (newLeft > gameRect.width - playerRect.width) {
-            newLeft = gameRect.width - playerRect.width;
-        }
-
+        newLeft = Math.max(leftBoundary, Math.min(newLeft, gameRect.width - playerRect.width));
         player.style.left = `${newLeft}px`;
     }
 });
@@ -87,162 +61,103 @@ function checkDifficultyIncrease() {
     while (score >= lastSpeedUpScore + 300) {
         currentObstacleSpeed += 1;
         lastSpeedUpScore += 300;
-        console.log(`障害物の落下速度が ${currentObstacleSpeed}px に増加しました。 (現在のスコア: ${score})`);
+        console.log(`Obstacle speed increased to ${currentObstacleSpeed}`);
     }
 }
 
 function createObstacle() {
-    if (!gameOver) {
-        obstaclesPerGeneration = 1 + Math.floor(score / 100);
-        if (obstaclesPerGeneration > 15) obstaclesPerGeneration = 15;
+    obstaclesPerGeneration = 1 + Math.floor(score / 100);
+    if (obstaclesPerGeneration > 15) obstaclesPerGeneration = 15;
 
-        for (let i = 0; i < obstaclesPerGeneration; i++) {
-            const obstacle = document.createElement('div');
-            obstacle.classList.add('obstacle');
-            const obstacleType = Math.floor(Math.random() * 4);
-            obstacle.style.backgroundImage = `url('images/obstacles/obstacle${obstacleType}.png')`;
-            obstacle.style.left = `${Math.random() * (gameContainer.offsetWidth - 50)}px`;
-            obstacle.style.top = `${-50 - (i * 100)}px`;
-            gameContainer.appendChild(obstacle);
-
-            let obstacleInterval = setInterval(() => {
-                if (!gameOver) {
-                    const obstacleRect = obstacle.getBoundingClientRect();
-                    const playerRect = player.getBoundingClientRect();
-
-                    const playerLeft = playerRect.left + collisionPadding;
-                    const playerRight = playerRect.right - collisionPadding;
-                    const playerTop = playerRect.top + collisionPadding;
-                    const playerBottom = playerRect.bottom - collisionPadding;
-
-                    const obstacleLeft = obstacleRect.left + collisionPadding;
-                    const obstacleRight = obstacleRect.right - collisionPadding;
-                    const obstacleTop = obstacleRect.top + collisionPadding;
-                    const obstacleBottom = obstacleRect.bottom - collisionPadding;
-
-                    if (obstacleRect.top > gameContainer.offsetHeight) {
-                        obstacle.remove();
-                        clearInterval(obstacleInterval);
-                        score += 10;
-                        scoreDisplay.textContent = `Score: ${score}`;
-                        checkDifficultyIncrease();
-
-                    } else {
-                        obstacle.style.top = `${obstacleRect.top + currentObstacleSpeed}px`;
-                    }
-
-                    if (
-                        playerLeft < obstacleRight &&
-                        playerRight > obstacleLeft &&
-                        playerTop < obstacleBottom &&
-                        playerBottom > obstacleTop
-                    ) {
-                        endGame();
-                    }
-                }
-            }, 20);
-        }
+    for (let i = 0; i < obstaclesPerGeneration; i++) {
+        const obstacle = document.createElement('div');
+        obstacle.classList.add('obstacle');
+        const obstacleType = Math.floor(Math.random() * 5);
+        obstacle.style.backgroundImage = `url('images/obstacles/obstacle${obstacleType}.png')`;
+        obstacle.style.left = `${Math.random() * (gameContainer.offsetWidth - 50)}px`;
+        obstacle.style.top = `${-50 - (i * 100)}px`;
+        gameContainer.appendChild(obstacle);
     }
 }
 
 function createSideObstacle() {
-    if (!gameOver) {
-        const sideObstacle = document.createElement('div');
-        sideObstacle.classList.add('side-obstacle');
-        sideObstacle.style.backgroundImage = `url('images/side_obstacles/side_obstacle0.png')`;
-
-        const fromLeft = Math.random() < 0.5;
-        if (fromLeft) {
-            sideObstacle.style.left = `0px`;
-        } else {
-            sideObstacle.style.left = `${gameContainer.offsetWidth - 80}px`;
-        }
-        sideObstacle.style.top = `-80px`;
-        gameContainer.appendChild(sideObstacle);
-
-        let sideObstacleInterval = setInterval(() => {
-            if (!gameOver) {
-                const sideObstacleRect = sideObstacle.getBoundingClientRect();
-                const playerRect = player.getBoundingClientRect();
-
-                const playerLeft = playerRect.left + collisionPadding;
-                const playerRight = playerRect.right - collisionPadding;
-                const playerTop = playerRect.top + collisionPadding;
-                const playerBottom = playerRect.bottom - collisionPadding;
-
-                const obstacleLeft = sideObstacleRect.left + collisionPadding;
-                const obstacleRight = sideObstacleRect.right - collisionPadding;
-                const obstacleTop = sideObstacleRect.top + collisionPadding;
-                const obstacleBottom = sideObstacleRect.bottom - collisionPadding;
-
-                if (sideObstacleRect.top > gameContainer.offsetHeight) {
-                    sideObstacle.remove();
-                    clearInterval(sideObstacleInterval);
-                } else {
-                    sideObstacle.style.top = `${sideObstacleRect.top + currentObstacleSpeed}px`;
-                }
-
-                if (
-                    playerLeft < obstacleRight &&
-                    playerRight > obstacleLeft &&
-                    playerTop < obstacleBottom &&
-                    playerBottom > obstacleTop
-                ) {
-                    endGame();
-                }
-            }
-        }, 20);
-    }
+    const sideObstacle = document.createElement('div');
+    sideObstacle.classList.add('side-obstacle');
+    sideObstacle.style.backgroundImage = `url('images/side_obstacles/side_obstacle0.png')`;
+    const fromLeft = Math.random() < 0.5;
+    sideObstacle.style.left = fromLeft ? `0px` : `${gameContainer.offsetWidth - 80}px`;
+    sideObstacle.style.top = `-80px`;
+    gameContainer.appendChild(sideObstacle);
 }
 
 function createPointItem() {
-    if (!gameOver) {
-        const pointItem = document.createElement('div');
-        pointItem.classList.add('point-item');
-        pointItem.style.backgroundImage = `url('images/items/point_item.png')`;
-        pointItem.style.left = `${Math.random() * (gameContainer.offsetWidth - 40)}px`;
-        pointItem.style.top = `-40px`;
-        gameContainer.appendChild(pointItem);
+    const pointItem = document.createElement('div');
+    pointItem.classList.add('point-item');
+    pointItem.style.backgroundImage = `url('images/items/point_item.png')`;
+    pointItem.style.left = `${Math.random() * (gameContainer.offsetWidth - 40)}px`;
+    pointItem.style.top = `-40px`;
+    gameContainer.appendChild(pointItem);
+}
 
-        let pointItemInterval = setInterval(() => {
-            if (!gameOver) {
-                const pointItemRect = pointItem.getBoundingClientRect();
-                const playerRect = player.getBoundingClientRect();
+function checkCollision(element1, element2) {
+    const rect1 = element1.getBoundingClientRect();
+    const rect2 = element2.getBoundingClientRect();
 
-                const playerLeft = playerRect.left + collisionPadding;
-                const playerRight = playerRect.right - collisionPadding;
-                const playerTop = playerRect.top + collisionPadding;
-                const playerBottom = playerRect.bottom - collisionPadding;
+    const verticalOverlap = rect1.top + collisionPadding < rect2.bottom - collisionPadding && rect1.bottom - collisionPadding > rect2.top + collisionPadding;
+    const horizontalOverlap = rect1.left + collisionPadding < rect2.right - collisionPadding && rect1.right - collisionPadding > rect2.left + collisionPadding;
 
-                const itemLeft = pointItemRect.left + collisionPadding;
-                const itemRight = pointItemRect.right - collisionPadding;
-                const itemTop = pointItemRect.top + collisionPadding;
-                const itemBottom = pointItemRect.bottom - collisionPadding;
+    return verticalOverlap && horizontalOverlap;
+}
 
-                if (pointItemRect.top > gameContainer.offsetHeight) {
-                    pointItem.remove();
-                    clearInterval(pointItemInterval);
-                } else {
-                    pointItem.style.top = `${pointItemRect.top + currentObstacleSpeed}px`;
-                }
 
-                if (
-                    playerLeft < itemRight &&
-                    playerRight > itemLeft &&
-                    playerTop < itemBottom &&
-                    playerBottom > itemTop
-                ) {
-                    pointItem.remove();
-                    clearInterval(pointItemInterval);
-                    score = Math.floor(score * 1.2);
-                    scoreDisplay.textContent = `Score: ${score}`;
-                    checkDifficultyIncrease();
-                    sparkleSound.currentTime = 0; // 効果音を最初から再生
-                    sparkleSound.play(); // 効果音再生
-                }
+function updateGameObjects() {
+    document.querySelectorAll('.obstacle, .side-obstacle, .point-item').forEach(item => {
+        const itemTop = parseFloat(item.style.top);
+        if (itemTop > gameContainer.offsetHeight) {
+            item.remove();
+            if (item.classList.contains('obstacle')) {
+                score += 10;
+                scoreDisplay.textContent = `Score: ${score}`;
+                checkDifficultyIncrease();
             }
-        }, 20);
+        } else {
+            item.style.top = `${itemTop + currentObstacleSpeed}px`;
+        }
+
+        if (checkCollision(player, item)) {
+            if (item.classList.contains('point-item')) {
+                item.remove();
+                score = Math.floor(score * 1.2);
+                scoreDisplay.textContent = `Score: ${score}`;
+                checkDifficultyIncrease();
+                sparkleSound.currentTime = 0;
+                sparkleSound.play();
+            } else {
+                endGame();
+            }
+        }
+    });
+}
+
+function gameLoop(timestamp) {
+    if (gameOver) return;
+
+    if (timestamp - lastObstacleTime > 1000) {
+        lastObstacleTime = timestamp;
+        createObstacle();
     }
+    if (timestamp - lastSideObstacleTime > sideObstacleIntervalTime) {
+        lastSideObstacleTime = timestamp;
+        createSideObstacle();
+    }
+    if (timestamp - lastPointItemTime > 5000) {
+        lastPointItemTime = timestamp;
+        createPointItem();
+    }
+
+    updateGameObjects();
+
+    requestAnimationFrame(gameLoop);
 }
 
 function saveScore(newScore) {
@@ -265,12 +180,8 @@ function displayRanking() {
 
 function endGame() {
     gameOver = true;
-    clearInterval(obstacleGenerationInterval);
-    clearInterval(sideObstacleGenerationInterval);
-    clearInterval(pointItemGenerationInterval);
-    document.querySelectorAll('.obstacle').forEach(obstacle => obstacle.remove());
-    document.querySelectorAll('.side-obstacle').forEach(obstacle => obstacle.remove());
-    document.querySelectorAll('.point-item').forEach(item => item.remove());
+    gameMusic.pause();
+    gameMusic.currentTime = 0;
 
     finalScore.textContent = score;
     saveScore(score);
@@ -279,22 +190,13 @@ function endGame() {
     gameOverScreen.classList.remove('hidden');
     startScreen.style.display = 'block';
 
-    gameMusic.pause();
-    gameMusic.currentTime = 0;
-
-    player.style.transition = 'background-color 0.2s ease-in-out';
     let blinkCount = 0;
     const blinkInterval = setInterval(() => {
-        if (blinkCount % 2 === 0) {
-            player.style.backgroundColor = 'red';
-        } else {
-            player.style.backgroundColor = 'transparent';
-        }
+        player.style.visibility = (blinkCount % 2 === 0) ? 'hidden' : 'visible';
         blinkCount++;
         if (blinkCount === 6) {
             clearInterval(blinkInterval);
-            player.style.backgroundColor = 'transparent';
-            player.style.transition = '';
+            player.style.visibility = 'visible';
         }
     }, 200);
 }
