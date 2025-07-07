@@ -97,6 +97,7 @@ body {
     border-radius: 10px;
     border: 2px solid #8B0000; /* マットな赤色の枠線 */
     color: #8B0000; /* マットな赤色の文字色 */
+    z-index: 100; /* この行を追加 */
 }
 
 #game-over-screen h1 {
